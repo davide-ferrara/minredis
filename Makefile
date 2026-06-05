@@ -1,51 +1,66 @@
-CC      = gcc
-FLAGS   = -DLOG_USE_COLOR -g -Wall -Wextra -O2
-LIBS    = -lpthread
+CC        = gcc
+CFLAGS    = -DLOG_USE_COLOR -D_GNU_SOURCE -std=c11 -Wall -Wextra -O2
+CPPFLAGS  = -Iinclude -lpthread
+TARGET    = minredis
+BUILD     = build
 
-SRC     = cmd.c parser.c strbuf.c hash.c log.c server.c reply.c serializer.c
-HDR     = cmd.h parser.h strbuf.h hash.h log.h server.h reply.h serializer.h
+# Tutti i file .c tranne minredis.c (che contiene il main) e i file di test (che contengono i loro main)
+CORE_SRCS = $(filter-out src/minredis.c src/test_%.c,$(wildcard src/*.c))
+# Sostituisco a ogni .c di CORE_SRCS .o, ottengo i nomi dei file oggetto
+CORE_OBJS = $(patsubst src/%.c,$(BUILD)/%.o,$(CORE_SRCS))
+# Nomi dei file .d (diepndeze degli header) ottenuti alla stessa maniera
+DEPS      = $(patsubst src/%.c,$(BUILD)/%.d,$(wildcard src/*.c))
+TEST_SRCS = $(wildcard src/test_*.c)
 
-BIN     = bin
+# Evitiamo i confilitti con il filesystem, ci fosse un file chiamato all make direbbe "is up to date"
+.PHONY: all clean install uninstall debug test run_tests
 
-all: minredis test_hash test_parser test_strbuf test_serializer
+all: $(TARGET)
 
-$(BIN):
-	mkdir -p $(BIN)
+# $^ espannde innome dipendeze, $@ espande in nome del target
+$(TARGET): $(BUILD)/minredis.o $(CORE_OBJS)
+	$(CC) $^ -o $@
 
-minredis: $(BIN) minredis.c $(SRC) $(HDR)
-	$(CC) $(FLAGS) -o $(BIN)/$@ minredis.c $(SRC) $(LIBS)
+# -MMD genera il file .d con le dipendenze dagli header, -MP aggiunge target vuoti per evitare errori se un header viene eliminato
+$(BUILD)/%.o: src/%.c | $(BUILD)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
 
-# Con ThreadSanitizer
-tsan: $(BIN) minredis.c $(SRC) $(HDR)
-	$(CC) $(FLAGS) -fsanitize=thread -o $(BIN)/minredis-tsan minredis.c $(SRC) $(LIBS)
+# | questo simbolo fa in modo che se la cartella build non esiste viene creata (order-only prerequisite)
+$(BUILD):
+	mkdir -p $@
 
-test_hash: $(BIN) test_hash.c hash.c hash.h log.c log.h
-	$(CC) $(FLAGS) -o $(BIN)/$@ test_hash.c hash.c log.c -lpthread
+$(BUILD)/test_%: $(BUILD)/test_%.o $(CORE_OBJS)
+	$(CC) $^ -o $@ $(CPPFLAGS)
 
-test_parser: $(BIN) test_parser.c $(SRC) $(HDR)
-	$(CC) $(FLAGS) -o $(BIN)/$@ test_parser.c $(SRC) $(LIBS)
+# patsubst genera i nomi delle dipendeze e chiama il comando sopra
+test: $(patsubst src/%.c,$(BUILD)/%,$(TEST_SRCS))
 
-test_strbuf: $(BIN) test_strbuf.c strbuf.c strbuf.h
-	$(CC) $(FLAGS) -o $(BIN)/$@ test_strbuf.c strbuf.c
-
-test_serializer: $(BIN) test_serializer.c $(SRC) $(HDR)
-	$(CC) $(FLAGS) -o $(BIN)/$@ test_serializer.c $(SRC) $(LIBS)
-
-test: test_parser test_hash test_serializer test_strbuf
-	for t in test_parser test_hash test_serializer test_strbuf; do \
-		$(BIN)/$$t; \
+# Piccolo script bash se vogliamo per eseguire i test in serie
+run_tests: test
+	@for t in $(patsubst src/%.c,$(BUILD)/%,$(TEST_SRCS)); do \
+		echo "=== $$t ==="; \
+		./$$t || exit 1; \
 	done
 
-run: minredis
-	./$(BIN)/minredis
+install: $(TARGET)
+	@echo "Installing minredis..."
+	cp $(TARGET) /usr/bin/$(TARGET)
+	@echo "Installation complete!"
+
+uninstall:
+	@echo "Uninstalling minredis..."
+	rm -f /usr/bin/$(TARGET)
+	@echo "Uninstall complete!"
 
 clean:
-	rm -f $(BIN)/*
+	rm -rf $(BUILD) $(TARGET)
 
-clean_tests:
-	rm -f $(BIN)/test_hash $(BIN)/test_parser $(BIN)/test_serializer $(BIN)/test_strbuf
+# Aggiunge i flag di debug solo quando si esegue `make debug`
+debug: CFLAGS += -g -DDEBUG
+debug: all
 
-memory:
-	valgrind --leak-check=full --show-leak-kinds=all $(BIN)/minredis
+# impedisce a make di cancellare tutti i file intermedi come i `.o`
+.SECONDARY:
 
-.PHONY: all test clean clean_tests test_serializer
+# Carica le dipendenze dei file .o generati da -MMD e -MP in modo che se modifico un `.h` make conosce la dipendeza di esso col `.o`
+-include $(DEPS)

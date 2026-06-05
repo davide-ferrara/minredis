@@ -56,3 +56,5 @@ dkms.conf
 slides/
 report/
 bin/
+build/
+minredis
