@@ -13,7 +13,7 @@ DEPS      = $(patsubst src/%.c,$(BUILD)/%.d,$(wildcard src/*.c))
 TEST_SRCS = $(wildcard src/test_*.c)
 
 # Evitiamo i confilitti con il filesystem, ci fosse un file chiamato all make direbbe "is up to date"
-.PHONY: all clean install uninstall debug test run_tests
+.PHONY: all clean install uninstall debug memory test run_tests
 
 all: $(TARGET)
 
@@ -60,6 +60,9 @@ clean:
 # Aggiunge i flag di debug solo quando si esegue `make debug`
 debug: CFLAGS += -g -DDEBUG
 debug: all
+
+memory: debug
+	valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET)
 
 # impedisce a make di cancellare tutti i file intermedi come i `.o`
 .SECONDARY:

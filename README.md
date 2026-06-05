@@ -5,25 +5,26 @@ Key-value store in-memory, protocollo RESP testuale, thread-per-client.
 ## Compilazione
 
 ```
-make                    # server + test
-make tsan               # server con ThreadSanitizer
+make                    # server
+make debug              # server con simboli di debug
+make memory             # server con valgrind
 ```
 
 ## Esecuzione
 
 ```
-./bin/minredis                      # default porta 5050
-./bin/minredis --port 7000 --debug  # porta personalizzata + log debug
-./bin/minredis --restore dump.rdb   # ripristino da snapshot
+./minredis                      # default porta 5050
+./minredis --port 7000 --debug  # porta personalizzata + log debug
+./minredis --restore dump.rdb   # ripristino da snapshot
 ```
 
 ## Test
 
 ```
-make test                           # unit test
-uv run bench/bench.py               # benchmark (race + throughput + plot)
-uv run bench/net_latency.py         # test frammentazione TCP
-valgrind --leak-check=full ./bin/minredis   # memory leak check
+make test               # compila i binari di test
+make run_tests          # compila ed esegue tutti i test
+uv run bench/bench.py   # benchmark (race + throughput + plot)
+uv run bench/net_latency.py   # test frammentazione TCP
 ```
 
 ## Comandi
