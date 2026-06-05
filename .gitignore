@@ -58,3 +58,4 @@ report/
 bin/
 build/
 minredis
+*.png
