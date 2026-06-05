@@ -22,6 +22,8 @@ $(TARGET): $(BUILD)/minredis.o $(CORE_OBJS)
 	$(CC) $^ -o $@
 
 # -MMD genera il file .d con le dipendenze dagli header, -MP aggiunge target vuoti per evitare errori se un header viene eliminato
+# -c compila soltanto, crea il file `.o`
+# $< prima dipendeza
 $(BUILD)/%.o: src/%.c | $(BUILD)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
 
