@@ -59,3 +59,4 @@ bin/
 build/
 minredis
 *.png
+dump.minredis
