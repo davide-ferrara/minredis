@@ -248,7 +248,7 @@ static void *worker_handle_client(void *arg) {
   Client *client = wrap->client;
   free(wrap);
 
-  /* Buffer di accumulo (querybuf di Redis) */
+  /* Buffer di accumulo */
   StringBuffer querybuf = {.buf = malloc(BUFSIZ), .len = 0, .cap = BUFSIZ};
   if (querybuf.buf == NULL) {
     log_error("Impossibile allocare querybuf: %s", strerror(errno));
@@ -265,7 +265,7 @@ static void *worker_handle_client(void *arg) {
   int running = 1;
 
   while (running) {
-    /* === FASE 1: leggi dal socket e accumula === */
+    /* === Legge dal socket e accumula === */
     char iobuf[BUFSIZ];
     ssize_t n = recv(client->sock, iobuf, sizeof(iobuf), 0);
     if (n == -1) {
@@ -281,7 +281,7 @@ static void *worker_handle_client(void *arg) {
     log_debug("%zd byte <- %s:%d", n, client->ip, client->port);
     strbuf_append_noterm(&querybuf, iobuf, (size_t)n);
 
-    /* === FASE 2+3: estrai ed esegui tutti i comandi completi === */
+    /* === Esegue i comandi completi === */
     while (running) {
       size_t end = find_crlf(querybuf.buf, querybuf.len);
       if (end == 0)
@@ -306,7 +306,7 @@ static void *worker_handle_client(void *arg) {
 
       free(cmd_buf);
 
-      /* Rimuovi il comando consumato dal querybuf */
+      /* Rimuove il comando consumato dal querybuf */
       querybuf.len -= cmd_len;
       if (querybuf.len > 0)
         memmove(querybuf.buf, querybuf.buf + cmd_len, querybuf.len);
@@ -341,15 +341,15 @@ static int gracefully_exit(Server *server) {
 
   log_info("Arresto in corso... (client connessi: %d)", n);
 
-  /* Sblocchiamo tutti i recv() bloccanti */
+  /* Sblocca tutti i recv() bloccanti */
   for (int i = 0; i < n; i++)
     shutdown(server->clients.array[i].sock, SHUT_RDWR);
 
-  /* Aspettiamo che tutti i thread worker terminino */
+  /* Aspetta che tutti i thread worker terminino */
   for (int i = 0; i < n; i++)
     pthread_join(server->clients.threads[i], NULL);
 
-  /* Chiudiamo i socket (ormai i thread sono fermi) */
+  /* Chiude i socket (ormai i thread sono fermi) */
   for (int i = 0; i < n; i++) {
     close(server->clients.array[i].sock);
     server->clients.array[i].sock = -1;
