@@ -13,17 +13,17 @@ make memory             # server con valgrind
 ## Esecuzione
 
 ```
-./minredis                      # default porta 5050
-./minredis --port 7000 --debug  # porta personalizzata + log debug
-./minredis --restore dump.rdb   # ripristino da snapshot
+./minredis                           # default porta 5050
+./minredis --port 7000 --debug       # porta personalizzata + log debug
+./minredis --restore dump.minredis   # ripristino da snapshot
 ```
 
 ## Test
 
 ```
-make test               # compila i binari di test
-make run_tests          # compila ed esegue tutti i test
-uv run bench/bench.py   # benchmark (race + throughput + plot)
+make test                     # compila i binari di test
+make run_tests                # compila ed esegue tutti i test
+uv run bench/bench.py         # benchmark (race + throughput + plot)
 uv run bench/net_latency.py   # test frammentazione TCP
 ```
 
